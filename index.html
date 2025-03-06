@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус батареи</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        .battery-info { font-size: 20px; margin: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Статус батареи</h1>
+    <div class="battery-info" id="chargeLevel"></div>
+    <div class="battery-info" id="chargingStatus"></div>
+
+    <script>
+        async function updateBatteryInfo() {
+            if (!navigator.getBattery) {
+                document.body.innerHTML = "<h2>Ваш браузер не поддерживает API батареи</h2>";
+                return;
+            }
+
+            const battery = await navigator.getBattery();
+            let lastChargeLevel = battery.level;
+            let lastTimestamp = Date.now();
+            let chargeSpeedInterval;
+
+            function refreshBatteryInfo() {
+                document.getElementById("chargeLevel").innerText = `🔋 Уровень заряда: ${(battery.level * 100).toFixed(1)}%`;
+                document.getElementById("chargingStatus").innerText = battery.charging ? "⚡ Статус: Заряжается" : "🔌 Статус: Не заряжается";
+
+                if (!battery.charging) {
+                    document.getElementById("chargingSpeed").innerText = `⚡ Скорость зарядки: Неизвестно`;
+                    clearInterval(chargeSpeedInterval);
+                }
+            }
+
+            function calculateChargingSpeed() {
+                if (!battery.charging) return;
+
+                let currentChargeLevel = battery.level;
+                let currentTimestamp = Date.now();
+                let chargeDifference = (currentChargeLevel - lastChargeLevel) * 100;
+                let timeDifference = (currentTimestamp - lastTimestamp) / 1000;
+
+                if (timeDifference > 0 && chargeDifference !== 0) {
+                    let chargeSpeed = (chargeDifference / timeDifference) * 60; // В процентах в минуту
+                    document.getElementById("chargingSpeed").innerText = `⚡ Скорость зарядки: ${chargeSpeed.toFixed(2)}%/мин`;
+                }
+
+                lastChargeLevel = currentChargeLevel;
+                lastTimestamp = currentTimestamp;
+            }
+
+            battery.addEventListener("chargingchange", () => {
+                refreshBatteryInfo();
+                if (battery.charging) {
+                    document.getElementById("chargingSpeed").innerText = `⚡ Скорость зарядки: 0.00%/мин`;
+                    lastChargeLevel = battery.level;
+                    lastTimestamp = Date.now();
+                    clearInterval(chargeSpeedInterval);
+                    chargeSpeedInterval = setInterval(calculateChargingSpeed, 2000);
+                }
+            });
+
+            battery.addEventListener("levelchange", refreshBatteryInfo);
+            refreshBatteryInfo();
+        }
+
+        updateBatteryInfo();
+    </script>
+
+</body>
+</html>
